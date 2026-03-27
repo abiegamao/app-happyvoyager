@@ -3,9 +3,8 @@ import Stripe from "stripe";
 import { getCustomerFromRequest } from "@/lib/customer-auth";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 export async function POST(request: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   try {
     const customer = await getCustomerFromRequest(request);
     if (!customer) {

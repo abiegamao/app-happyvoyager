@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getCustomerFromRequest } from "@/lib/customer-auth";
-import { getProductBySlug, getStripePriceId } from "@/lib/billing";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Direct env-var mapping — no Supabase lookup needed for checkout
+const PLAN_MAP: Record<
+  string,
+  { priceId: () => string | undefined; mode: "subscription" | "payment"; trial?: boolean }
+> = {
+  "playbook-monthly": {
+    priceId: () => process.env.STRIPE_PRICE_SPAIN_DNV_MONTHLY,
+    mode: "subscription",
+    trial: true,
+  },
+  "playbook-yearly": {
+    priceId: () => process.env.STRIPE_PRICE_SPAIN_DNV_YEARLY,
+    mode: "subscription",
+    trial: true,
+  },
+  "guided-navigator": {
+    priceId: () => process.env.STRIPE_PRICE_GUIDED_NAVIGATOR,
+    mode: "payment",
+  },
+  "vip-concierge": {
+    priceId: () => process.env.STRIPE_PRICE_VIP_CONCIERGE,
+    mode: "payment",
+  },
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,47 +37,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { slug } = await request.json();
+    const body = await request.json();
+    const slug: string = body.slug;
+
     if (!slug) {
-      return NextResponse.json(
-        { error: "Product slug is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Plan slug is required" }, { status: 400 });
     }
 
-    const product = await getProductBySlug(slug);
-    if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+    const plan = PLAN_MAP[slug];
+    if (!plan) {
+      return NextResponse.json({ error: `Unknown plan: ${slug}` }, { status: 400 });
     }
 
-    const priceId = await getStripePriceId(product.id);
+    const priceId = plan.priceId();
     if (!priceId) {
       return NextResponse.json(
-        { error: "No Stripe price configured for this product" },
-        { status: 400 }
+        { error: `No Stripe price configured for plan: ${slug}` },
+        { status: 500 }
       );
     }
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://app.happyvoyager.com";
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.happyvoyager.com";
 
     const metadata: Record<string, string> = {
       customer_id: customer.id,
-      product_id: product.id,
-      product_slug: product.slug,
+      product_slug: slug,
     };
 
-    if (product.type === "subscription") {
+    if (plan.mode === "subscription") {
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
-        customer_email: undefined, // customer already authenticated
         client_reference_id: customer.id,
         line_items: [{ price: priceId, quantity: 1 }],
         subscription_data: {
-          trial_period_days: 14,
+          trial_period_days: plan.trial ? 14 : undefined,
           metadata,
         },
         payment_method_collection: "always",
@@ -65,30 +81,21 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json({ url: session.url });
     } else {
-      const successUrl =
-        product.category === "service"
-          ? `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=service`
-          : `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
-
-      const cancelUrl =
-        product.category === "service"
-          ? `${appUrl}/dashboard`
-          : `${appUrl}/dashboard`;
-
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         client_reference_id: customer.id,
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
+        success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/dashboard`,
         metadata,
       });
       return NextResponse.json({ url: session.url });
     }
   } catch (error) {
     console.error("Stripe checkout error:", error);
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: "Failed to create checkout session", detail: message },
       { status: 500 }
     );
   }

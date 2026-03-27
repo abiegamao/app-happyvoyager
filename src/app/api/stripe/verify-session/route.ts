@@ -3,9 +3,8 @@ import Stripe from "stripe";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 export async function GET(request: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   try {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get("session_id");
