@@ -19,7 +19,7 @@ export async function getProductByStripePriceId(
     .single();
 
   if (!data) return null;
-  return (data as { products: Product }).products ?? null;
+  return (data as unknown as { products: Product }).products ?? null;
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
