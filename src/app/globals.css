@@ -328,3 +328,103 @@
   background: #d8afa1;
   color: #3a3a3a;
 }
+
+/* ─── Playbook Theme Tokens ─── */
+[data-playbook].dark {
+  --pb-bg: #2a2a2a;
+  --pb-surface: rgba(255,255,255,0.04);
+  --pb-surface-elevated: rgba(255,255,255,0.07);
+  --pb-surface-hover: rgba(255,255,255,0.06);
+  --pb-header: rgba(30,30,30,0.8);
+  --pb-sidebar: rgba(30,30,30,0.6);
+  --pb-text: rgba(255,255,255,0.9);
+  --pb-text-secondary: rgba(255,255,255,0.5);
+  --pb-text-muted: rgba(255,255,255,0.3);
+  --pb-text-inverse: #3a3a3a;
+  --pb-border: rgba(255,255,255,0.08);
+  --pb-border-subtle: rgba(255,255,255,0.05);
+  --pb-border-hover: rgba(255,255,255,0.12);
+  --pb-input-bg: rgba(255,255,255,0.05);
+  --pb-input-hover: rgba(255,255,255,0.10);
+  --pb-pill-bg: rgba(255,255,255,0.10);
+  --pb-shadow: rgba(0,0,0,0.15);
+  --pb-shadow-accent: rgba(227,169,156,0.2);
+  --pb-overlay: rgba(0,0,0,0.60);
+  --pb-blob-rose: rgba(227,169,156,0.08);
+  --pb-blob-sage: rgba(143,163,141,0.06);
+  --pb-blob-peach: rgba(242,214,201,0.05);
+  --pb-scrollbar-track: rgba(255,255,255,0.03);
+  --pb-scrollbar-thumb: rgba(227,169,156,0.3);
+  --pb-scrollbar-thumb-hover: rgba(227,169,156,0.5);
+  --pb-logo-filter: brightness(0) invert(1);
+}
+
+[data-playbook].light {
+  --pb-bg: #f9f5f2;
+  --pb-surface: rgba(255,255,255,0.7);
+  --pb-surface-elevated: rgba(255,255,255,0.85);
+  --pb-surface-hover: rgba(0,0,0,0.04);
+  --pb-header: rgba(255,255,255,0.85);
+  --pb-sidebar: rgba(255,255,255,0.7);
+  --pb-text: #3a3a3a;
+  --pb-text-secondary: rgba(58,58,58,0.6);
+  --pb-text-muted: rgba(58,58,58,0.35);
+  --pb-text-inverse: rgba(255,255,255,0.9);
+  --pb-border: rgba(0,0,0,0.08);
+  --pb-border-subtle: rgba(0,0,0,0.05);
+  --pb-border-hover: rgba(0,0,0,0.12);
+  --pb-input-bg: rgba(0,0,0,0.04);
+  --pb-input-hover: rgba(0,0,0,0.07);
+  --pb-pill-bg: rgba(0,0,0,0.06);
+  --pb-shadow: rgba(0,0,0,0.08);
+  --pb-shadow-accent: rgba(227,169,156,0.15);
+  --pb-overlay: rgba(0,0,0,0.40);
+  --pb-blob-rose: rgba(227,169,156,0.12);
+  --pb-blob-sage: rgba(143,163,141,0.10);
+  --pb-blob-peach: rgba(242,214,201,0.08);
+  --pb-scrollbar-track: #e7ddd3;
+  --pb-scrollbar-thumb: #e3a99c;
+  --pb-scrollbar-thumb-hover: #d69586;
+  --pb-logo-filter: none;
+}
+
+/* Playbook glassmorphism ~ theme-aware */
+[data-playbook] .glass-pb {
+  background: var(--pb-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--pb-border);
+}
+
+[data-playbook] .glass-pb-elevated {
+  background: var(--pb-surface-elevated);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--pb-border);
+}
+
+/* Playbook card hover */
+.playbook-card {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.playbook-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--pb-border-hover, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 8px 32px var(--pb-shadow, rgba(0, 0, 0, 0.15));
+}
+
+/* Playbook scrollbar */
+[data-playbook] ::-webkit-scrollbar-track {
+  background: var(--pb-scrollbar-track);
+}
+[data-playbook] ::-webkit-scrollbar-thumb {
+  background: var(--pb-scrollbar-thumb);
+}
+[data-playbook] ::-webkit-scrollbar-thumb:hover {
+  background: var(--pb-scrollbar-thumb-hover);
+}
+
+/* Script / cursive font class */
+.font-script {
+  font-family: var(--font-script), cursive;
+}
