@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 import { getCustomerFromRequest } from "@/lib/customer-auth";
 
 // Direct env-var mapping — no Supabase lookup needed for checkout
@@ -59,6 +60,27 @@ export async function POST(request: NextRequest) {
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.happyvoyager.com";
+
+    // Block duplicate subscriptions
+    if (plan.mode === "subscription") {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!
+      );
+      const { data: existing } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("customer_id", customer.id)
+        .in("status", ["active", "trialing", "past_due"])
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json(
+          { error: "already_subscribed", redirectTo: `${appUrl}/dashboard` },
+          { status: 409 }
+        );
+      }
+    }
 
     const metadata: Record<string, string> = {
       customer_id: customer.id,

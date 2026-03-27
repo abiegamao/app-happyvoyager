@@ -88,6 +88,10 @@ export default function PortalLogin({ onLoginSuccess, purchaseIntent }: PortalLo
         window.location.href = checkoutData.url;
         return;
       }
+      if (checkoutRes.status === 409 && checkoutData.error === "already_subscribed") {
+        onLoginSuccess(session);
+        return;
+      }
       toast.error("Could not create checkout session. Please try again.");
       return;
     }

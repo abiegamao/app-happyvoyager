@@ -69,6 +69,10 @@ function CheckoutContent() {
             window.location.href = data.url;
             return;
           }
+          if (res.status === 409 && data.error === "already_subscribed") {
+            router.replace("/dashboard");
+            return;
+          }
           if (!res.ok) {
             console.error("Checkout API error:", data);
           }

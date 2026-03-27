@@ -18,7 +18,7 @@ import {
 import { clearSession } from "@/lib/session";
 import type {
   PlaybookSession,
-  UserAccessEntry,
+
   ServiceOrderEntry,
   PurchaseHistoryEntry,
 } from "@/lib/session";
@@ -55,7 +55,8 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
   const hasSubscription =
     session.subscriptionStatus != null &&
     ["active", "trialing", "past_due"].includes(session.subscriptionStatus);
-  const hasOwnedPlaybook = Boolean(playbookAccess);
+  // Subscription itself = playbook access, even if user_access table not yet populated by webhook
+  const hasOwnedPlaybook = Boolean(playbookAccess) || hasSubscription;
   const hasServices = session.serviceOrders.length > 0;
   const hasHistory = session.purchaseHistory.length > 0;
 
@@ -175,7 +176,7 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
                 <SectionHeader title="Your Playbooks" />
                 <div className="grid gap-4 sm:grid-cols-2">
                   {PLAYBOOKS.map((config) => (
-                    <OwnedPlaybookCard key={config.slug} config={config} access={playbookAccess!} session={session} />
+                    <OwnedPlaybookCard key={config.slug} config={config} session={session} />
                   ))}
                 </div>
               </section>
@@ -228,7 +229,7 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
                 <SectionHeader title="Your Playbooks" />
                 <div className="grid gap-4 sm:grid-cols-2">
                   {PLAYBOOKS.map((config) => (
-                    <OwnedPlaybookCard key={config.slug} config={config} access={playbookAccess!} session={session} />
+                    <OwnedPlaybookCard key={config.slug} config={config} session={session} />
                   ))}
                 </div>
               </section>
@@ -337,11 +338,9 @@ function getStatusDetail(session: PlaybookSession): string | null {
 
 function OwnedPlaybookCard({
   config,
-  access,
   session,
 }: {
   config: PlaybookConfig;
-  access: UserAccessEntry;
   session: PlaybookSession;
 }) {
   const statusLabel = getStatusLabel(session);
