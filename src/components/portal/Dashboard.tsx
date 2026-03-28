@@ -74,7 +74,9 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
     : "V";
 
   const playbookSlugs = new Set(PLAYBOOKS.map((p) => p.slug));
-  const playbookAccess = session.access.find((a) => playbookSlugs.has(a.productSlug)) ?? null;
+  const playbookAccess = session.access.find(
+    (a) => playbookSlugs.has(a.productSlug) || a.productAccessType === "playbook"
+  ) ?? null;
 
   const hasSubscription =
     session.subscriptionStatus != null &&

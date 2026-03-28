@@ -16,6 +16,7 @@ function mapUserAccess(row: any): UserAccess {
     granted_by_product_id: row.granted_by_product_id,
     product_slug: row.products?.slug ?? "",
     product_name: row.products?.name ?? "",
+    product_access_type: row.products?.access_type ?? null,
     access_type: row.access_type,
     source: row.source ?? null,
     expires_at: row.expires_at ?? null,
@@ -82,7 +83,7 @@ export async function getAllUserAccess(
   const supabase = getClient();
   const { data } = await supabase
     .from("user_access")
-    .select("*, products:granted_by_product_id(slug, name)")
+    .select("*, products:granted_by_product_id(slug, name, access_type)")
     .eq("customer_id", customerId)
     .eq("is_active", true);
   return (data ?? []).map(mapUserAccess);

@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       access: accessRows.map((a) => ({
         productSlug: a.product_slug,
         productName: a.product_name,
+        productAccessType: a.product_access_type,
         accessSource: a.access_type,
         expiresAt: a.expires_at,
       })),

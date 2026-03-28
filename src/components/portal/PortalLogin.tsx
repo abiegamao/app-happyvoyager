@@ -175,13 +175,6 @@ export default function PortalLogin({ onLoginSuccess, purchaseIntent }: PortalLo
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-[#e3a99c]/5 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-[#bbcccd]/5 blur-3xl pointer-events-none" />
 
-        <div className="absolute top-10 left-0 w-full pointer-events-none">
-          <Plane className="w-5 h-5 text-white/8 animate-fly-across" style={{ animationDelay: "1s" }} />
-        </div>
-        <div className="absolute bottom-16 left-0 w-full pointer-events-none">
-          <Plane className="w-3.5 h-3.5 text-[#e3a99c]/10 animate-fly-across" style={{ animationDelay: "4s", animationDuration: "10s" }} />
-        </div>
-
         <div className="relative z-10">
           <a href={LANDING_URL} className="inline-block mb-10 group">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -332,7 +325,7 @@ export default function PortalLogin({ onLoginSuccess, purchaseIntent }: PortalLo
                   onClick={() => { setMode("login"); setSuccess(""); }}
                   className="text-[13px] text-[#787774] hover:text-[#3a3a3a] transition-colors mb-4"
                 >
-                  ← Back to login
+                Back to login
                 </button>
                 <h3 className="text-[20px] font-bold text-[#3a3a3a]">Reset password</h3>
                 <p className="text-[13px] text-[#787774] mt-1">

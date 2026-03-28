@@ -5,6 +5,7 @@ const SESSION_KEY = "playbook_session";
 export interface UserAccessEntry {
   productSlug: string;
   productName: string;
+  productAccessType: string | null; // e.g. "playbook" — what the product grants access to
   accessSource: string;
   expiresAt: string | null;
 }

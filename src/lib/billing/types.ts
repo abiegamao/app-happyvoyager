@@ -22,6 +22,8 @@ export interface Product {
   slug: string;
   type: ProductType;
   category: ProductCategory;
+  access_type: string | null;   // e.g. "playbook"
+  duration_days: number | null; // null = lifetime access
   description: string | null;
   is_active: boolean;
   created_at: string;
@@ -47,10 +49,11 @@ export interface UserAccess {
   id: string;
   customer_id: string;
   granted_by_product_id: string;
-  product_slug: string;    // joined from products
-  product_name: string;    // joined from products
+  product_slug: string;         // joined from products
+  product_name: string;         // joined from products
+  product_access_type: string | null; // joined from products.access_type e.g. "playbook"
   access_type: AccessSource;
-  source: string | null;   // stores stripe_subscription_id when applicable
+  source: string | null;        // stores stripe_subscription_id when applicable
   expires_at: string | null;
   is_active: boolean;
   created_at: string;
