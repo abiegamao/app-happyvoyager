@@ -18,7 +18,7 @@ export async function grantUserAccess(params: {
   stripeSubscriptionId?: string | null;
 }): Promise<void> {
   const supabase = getClient();
-  await supabase.from("user_access").upsert(
+  const { error } = await supabase.from("user_access").upsert(
     {
       customer_id: params.customerId,
       product_id: params.productId,
@@ -31,6 +31,9 @@ export async function grantUserAccess(params: {
     },
     { onConflict: "customer_id,product_id" }
   );
+  if (error) {
+    throw new Error(`grantUserAccess failed: ${error.message} (code: ${error.code})`);
+  }
 }
 
 export async function checkUserAccess(
