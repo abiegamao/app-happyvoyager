@@ -20,15 +20,21 @@ export interface ServiceOrderEntry {
 export interface PurchaseHistoryEntry {
   productSlug: string;
   productName: string;
-  amount: number;
+  amount: number | null;
   currency: string;
   purchasedAt: string;
+  purchaseType: string | null;
 }
 
 export interface PlaybookSession {
   customerId: string;
   email: string;
   name: string | null;
+  company: string | null;
+  jobTitle: string | null;
+  country: string | null;
+  phone: string | null;
+  memberSince: string | null;
   access: UserAccessEntry[];
   serviceOrders: ServiceOrderEntry[];
   purchaseHistory: PurchaseHistoryEntry[];
