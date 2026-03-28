@@ -13,13 +13,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const cached = getSession();
+
+    // Show cached data instantly — no loading flash for returning users
     if (cached) {
       setSessionState(cached);
       setLoading(false);
-      return;
     }
 
-    // No session in storage — try to restore from cookie via verify
+    // Always re-verify against DB to get fresh subscription/access data
     fetch("/api/stripe/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -28,7 +29,7 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.customerId) {
-          const restored: PlaybookSession = {
+          const fresh: PlaybookSession = {
             customerId: data.customerId,
             email: data.email,
             name: data.name,
@@ -40,14 +41,21 @@ export default function DashboardPage() {
             trialEndsAt: data.trialEndsAt || null,
             currentPeriodEnd: data.currentPeriodEnd || null,
           };
-          setSession(restored);
-          setSessionState(restored);
+          setSession(fresh);
+          setSessionState(fresh);
         } else {
+          // JWT expired or access revoked — boot them out
+          clearSession();
           router.replace("/login");
         }
       })
-      .catch(() => router.replace("/login"))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        // On network error: keep cached data if available, otherwise redirect
+        if (!cached) router.replace("/login");
+      })
+      .finally(() => {
+        if (!cached) setLoading(false);
+      });
   }, [router]);
 
   const handleLogout = () => {

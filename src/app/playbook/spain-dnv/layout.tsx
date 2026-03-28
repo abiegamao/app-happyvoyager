@@ -71,12 +71,32 @@ function PlaybookLayoutInner({
   const isLessonPage = pathname.includes("/lessons/");
 
   useEffect(() => {
-    const hasSession = sessionStorage.getItem("playbook_session");
-    const hasAuthCookie = document.cookie.split(";").some((c) => c.trim().startsWith("hv_customer"));
-    const authed = !!(hasSession || hasAuthCookie);
-    setIsAuthenticated(authed);
-    setIsChecking(false);
-  }, [pathname]);
+    // Optimistic: unblock render instantly if session cache exists
+    const hasSession = !!sessionStorage.getItem("playbook_session");
+    if (hasSession) {
+      setIsAuthenticated(true);
+      setIsChecking(false);
+    }
+
+    // Always re-verify against DB — cookie is httpOnly so JS can't read it directly
+    fetch("/api/stripe/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setIsAuthenticated(!!data.customerId);
+      })
+      .catch(() => {
+        if (!hasSession) setIsAuthenticated(false);
+      })
+      .finally(() => {
+        if (!hasSession) setIsChecking(false);
+      });
+  // Runs once on mount — layout stays alive across lesson navigations
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setSidebarOpen(false);
