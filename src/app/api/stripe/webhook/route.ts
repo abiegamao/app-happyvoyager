@@ -163,6 +163,21 @@ async function handleCheckoutCompleted(
     return;
   }
 
+  // ── Purchase receipt log (always write before access grant) ─────────────
+  await supabaseAdmin.from("purchases").insert({
+    customer_id: customerId,
+    product_id: product.id,
+    purchase_type: product.type,
+    stripe_session_id: session.id,
+    stripe_customer_id:
+      typeof session.customer === "string" ? session.customer : null,
+    stripe_price_id: stripePriceId,
+    stripe_payment_intent_id:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : null,
+  });
+
   // ── Route based on product category ──────────────────────────────────────
   if (product.category === "access") {
     await grantUserAccess({
@@ -206,21 +221,6 @@ async function handleCheckoutCompleted(
       stripeSessionId: session.id,
     });
   }
-
-  // ── Purchase receipt log ──────────────────────────────────────────────────
-  await supabaseAdmin.from("purchases").insert({
-    customer_id: customerId,
-    product_id: product.id,
-    purchase_type: product.type,
-    stripe_session_id: session.id,
-    stripe_customer_id:
-      typeof session.customer === "string" ? session.customer : null,
-    stripe_price_id: stripePriceId,
-    stripe_payment_intent_id:
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : null,
-  });
 
   // ── Post-purchase email ───────────────────────────────────────────────────
   const email =
