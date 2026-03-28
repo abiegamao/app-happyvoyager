@@ -26,6 +26,22 @@ const PLAN_MAP: Record<
     priceId: () => process.env.STRIPE_PRICE_VIP_CONCIERGE,
     mode: "payment",
   },
+  "nie-spanish-tax-id": {
+    priceId: () => process.env.STRIPE_PRICE_NIE,
+    mode: "payment",
+  },
+  "tie-residency-card": {
+    priceId: () => process.env.STRIPE_PRICE_TIE,
+    mode: "payment",
+  },
+  "regreso": {
+    priceId: () => process.env.STRIPE_PRICE_REGRESSO,
+    mode: "payment",
+  },
+  "schengen-visa-filipino": {
+    priceId: () => process.env.STRIPE_PRICE_SCHENGEN,
+    mode: "payment",
+  },
 };
 
 export async function POST(request: NextRequest) {

@@ -28,6 +28,7 @@ import { PLAYBOOKS, WAITLIST_PLAYBOOKS, COMING_SOON } from "@/data/playbooks";
 import type { PlaybookConfig } from "@/data/playbooks/types";
 import WaitlistCardButton from "./WaitlistCardButton";
 import ProfileTab from "./ProfileTab";
+import DashboardPricingSection from "./DashboardPricingSection";
 
 const SERVICE_ORDER_STATUS: Record<string, { label: string; color: string }> = {
   pending:     { label: "Received",    color: "#c9a84c" },
@@ -250,15 +251,20 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
             )}
 
             <section>
-              <SectionHeader title={hasOwnedPlaybook ? "Explore More" : "Start Your Journey"} />
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {!hasOwnedPlaybook && PLAYBOOKS.map((p) => <AvailableCard key={p.slug} playbook={p} />)}
-                {WAITLIST_PLAYBOOKS.slice(0, hasOwnedPlaybook ? 2 : 1).map((p) => (
-                  <WaitlistCard key={p.slug} playbook={p} />
-                ))}
-                {COMING_SOON.slice(0, 2).map((item) => <ComingSoonCard key={item.title} item={item} />)}
-              </div>
+              <DashboardPricingSection hasSubscription={hasSubscription} />
             </section>
+
+            {hasOwnedPlaybook && (
+              <section>
+                <SectionHeader title="Explore More" />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {WAITLIST_PLAYBOOKS.slice(0, 2).map((p) => (
+                    <WaitlistCard key={p.slug} playbook={p} />
+                  ))}
+                  {COMING_SOON.slice(0, 2).map((item) => <ComingSoonCard key={item.title} item={item} />)}
+                </div>
+              </section>
+            )}
 
             {hasHistory && (
               <section>
@@ -280,7 +286,7 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
 
         {activeTab === "playbooks" && (
           <div className={`space-y-10 transition-all duration-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            {hasOwnedPlaybook ? (
+            {hasOwnedPlaybook && (
               <section>
                 <SectionHeader title="Your Playbooks" />
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -289,22 +295,21 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
                   ))}
                 </div>
               </section>
-            ) : (
-              <section className="bg-white border border-[#e7ddd3] rounded-2xl p-5">
-                <p className="text-[14px] text-[#6b6b6b]">
-                  You don&apos;t have an active playbook yet. Start with a 14-day free trial.
-                </p>
-              </section>
             )}
 
             <section>
-              <SectionHeader title={hasOwnedPlaybook ? "Expand Your Toolkit" : "Start Your Journey"} />
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {!hasOwnedPlaybook && PLAYBOOKS.map((p) => <AvailableCard key={p.slug} playbook={p} />)}
-                {WAITLIST_PLAYBOOKS.map((p) => <WaitlistCard key={p.slug} playbook={p} />)}
-                {COMING_SOON.map((item) => <ComingSoonCard key={item.title} item={item} />)}
-              </div>
+              <DashboardPricingSection hasSubscription={hasSubscription} />
             </section>
+
+            {hasOwnedPlaybook && (
+              <section>
+                <SectionHeader title="Expand Your Toolkit" />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {WAITLIST_PLAYBOOKS.map((p) => <WaitlistCard key={p.slug} playbook={p} />)}
+                  {COMING_SOON.map((item) => <ComingSoonCard key={item.title} item={item} />)}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
