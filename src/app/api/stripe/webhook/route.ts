@@ -180,11 +180,23 @@ async function handleCheckoutCompleted(
 
   // ── Route based on product category ──────────────────────────────────────
   if (product.category === "access") {
+    // For subscriptions, set expiresAt to trial_end (if trialing) or current_period_end
+    // so user_access reflects when access actually expires
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sub = stripeSubscription as any;
+    const subscriptionExpiresAt = stripeSubscription
+      ? (() => {
+          const end = sub.trial_end ?? sub.current_period_end;
+          return end ? new Date(end * 1000).toISOString() : null;
+        })()
+      : null;
+
     await grantUserAccess({
       customerId,
       productId: product.id,
       accessType: getAccessSource(product),
       source: stripeSubscription?.id ?? null,
+      expiresAt: subscriptionExpiresAt,
     });
 
     if (stripeSubscription) {
