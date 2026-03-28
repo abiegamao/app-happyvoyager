@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,17 +14,20 @@ import {
   Plane,
   CreditCard,
   FileText,
+  User,
+  ChevronDown,
+  Tag,
 } from "lucide-react";
-import { clearSession } from "@/lib/session";
+import { clearSession, setSession } from "@/lib/session";
 import type {
   PlaybookSession,
-
   ServiceOrderEntry,
   PurchaseHistoryEntry,
 } from "@/lib/session";
 import { PLAYBOOKS, WAITLIST_PLAYBOOKS, COMING_SOON } from "@/data/playbooks";
 import type { PlaybookConfig } from "@/data/playbooks/types";
 import WaitlistCardButton from "./WaitlistCardButton";
+import ProfileTab from "./ProfileTab";
 
 const SERVICE_ORDER_STATUS: Record<string, { label: string; color: string }> = {
   pending:     { label: "Received",    color: "#c9a84c" },
@@ -38,24 +41,43 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type DashboardTab = "overview" | "playbooks" | "services" | "history";
+type DashboardTab = "overview" | "playbooks" | "services" | "history" | "profile";
 
-export default function Dashboard({ session, onLogout }: DashboardProps) {
+export default function Dashboard({ session: initialSession, onLogout }: DashboardProps) {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
+  const [session, setLocalSession] = useState<PlaybookSession>(initialSession);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const firstName = session.name?.split(" ")[0] || "Voyager";
+  // Keep local session in sync if parent passes a fresh one
+  useEffect(() => { setLocalSession(initialSession); }, [initialSession]);
 
-  // Access derived from session (new shape)
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const firstName = session.name?.split(" ")[0] || "Voyager";
+  const initials = session.name
+    ? session.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()
+    : "V";
+
   const playbookSlugs = new Set(PLAYBOOKS.map((p) => p.slug));
   const playbookAccess = session.access.find((a) => playbookSlugs.has(a.productSlug)) ?? null;
 
   const hasSubscription =
     session.subscriptionStatus != null &&
     ["active", "trialing", "past_due"].includes(session.subscriptionStatus);
-  // Subscription itself = playbook access, even if user_access table not yet populated by webhook
   const hasOwnedPlaybook = Boolean(playbookAccess) || hasSubscription;
   const hasServices = session.serviceOrders.length > 0;
   const hasHistory = session.purchaseHistory.length > 0;
@@ -64,15 +86,12 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
     () => [
       { key: "overview",  label: "Overview"  },
       { key: "playbooks", label: "Playbooks" },
-      ...(hasServices ? [{ key: "services" as const, label: "Services", count: session.serviceOrders.length }] : []),
-      ...(hasHistory  ? [{ key: "history"  as const, label: "History",  count: session.purchaseHistory.length }] : []),
+      { key: "services",  label: "Services",  ...(hasServices ? { count: session.serviceOrders.length } : {}) },
+      { key: "history",   label: "History",   ...(hasHistory  ? { count: session.purchaseHistory.length } : {}) },
+      { key: "profile",   label: "Profile"   },
     ],
-    [hasHistory, hasServices, session.serviceOrders.length, session.purchaseHistory.length]
+    [hasServices, hasHistory, session.serviceOrders.length, session.purchaseHistory.length]
   );
-
-  useEffect(() => {
-    if (!tabItems.some((t) => t.key === activeTab)) setActiveTab("overview");
-  }, [activeTab, tabItems]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/customer/logout", { method: "POST" });
@@ -90,6 +109,12 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
     }
   };
 
+  const handleSessionUpdate = (updates: Partial<PlaybookSession>) => {
+    const updated = { ...session, ...updates };
+    setLocalSession(updated);
+    setSession(updated);
+  };
+
   return (
     <main className="min-h-screen bg-[#f9f5f2]">
       <header className="sticky top-0 z-20 border-b border-[#e7ddd3] bg-[#f9f5f2]">
@@ -104,44 +129,60 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
               />
             </Link>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              {hasSubscription && (
-                <button
-                  onClick={handleManageSubscription}
-                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-[#e7ddd3] bg-white text-[12px] sm:text-[13px] text-[#787774] hover:text-[#3a3a3a] hover:border-[#d8ccbf] transition-colors"
-                >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Manage Subscription</span>
-                  <span className="sm:hidden">Billing</span>
-                </button>
-              )}
+            {/* Avatar dropdown */}
+            <div className="relative" ref={menuRef}>
               <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-[#e7ddd3] bg-white text-[12px] sm:text-[13px] text-[#787774] hover:text-[#3a3a3a] hover:border-[#d8ccbf] transition-colors"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full border border-[#e7ddd3] bg-white hover:border-[#d8ccbf] transition-colors"
+                aria-expanded={menuOpen}
+                aria-label="Account menu"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sign out</span>
-                <span className="sm:hidden">Exit</span>
+                <span className="w-6 h-6 rounded-full bg-[#e3a99c]/20 text-[#e3a99c] text-[11px] font-bold flex items-center justify-center select-none">
+                  {initials}
+                </span>
+                <span className="hidden sm:block text-[13px] font-semibold text-[#3a3a3a] max-w-[120px] truncate">
+                  {firstName}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#b0a89e] transition-transform ${menuOpen ? "rotate-180" : ""}`} />
               </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl border border-[#e7ddd3] shadow-lg overflow-hidden z-30">
+                  <div className="px-4 py-3 border-b border-[#f0e8e0]">
+                    <p className="text-[13px] font-semibold text-[#3a3a3a] truncate">{session.name || "Voyager"}</p>
+                    <p className="text-[11px] text-[#b0a89e] truncate">{session.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { setActiveTab("profile"); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#3a3a3a] hover:bg-[#f9f5f2] transition-colors"
+                  >
+                    <User className="w-4 h-4 text-[#b0a89e]" />
+                    My Profile
+                  </button>
+                  {hasSubscription && (
+                    <button
+                      onClick={() => { handleManageSubscription(); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#3a3a3a] hover:bg-[#f9f5f2] transition-colors"
+                    >
+                      <CreditCard className="w-4 h-4 text-[#b0a89e]" />
+                      Manage Billing
+                    </button>
+                  )}
+                  <div className="border-t border-[#f0e8e0]">
+                    <button
+                      onClick={() => { setMenuOpen(false); handleLogout(); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#d83a52] hover:bg-[#f9f5f2] transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Plane className="w-4 h-4 text-[#e3a99c]" />
-              <span className="text-[12px] font-semibold text-[#e3a99c] uppercase tracking-wide">
-                Playbook Portal
-              </span>
-            </div>
-            <h1 className="text-[27px] md:text-[32px] font-bold text-[#3a3a3a] tracking-tight leading-tight">
-              Welcome back, {firstName}!
-            </h1>
-            <p className="text-[14px] text-[#787774] mt-1">
-              Here&apos;s everything in your travel toolkit.
-            </p>
-          </div>
-
-          <nav className="mt-4 pt-3 border-t border-[#eee5dc]" aria-label="Dashboard sections">
+          <nav className="pt-1" aria-label="Dashboard sections">
             <div className="inline-flex gap-1 p-1 rounded-xl bg-white border border-[#e7ddd3] w-full md:w-auto overflow-x-auto">
               {tabItems.map((tab) => (
                 <button
@@ -171,6 +212,21 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-10">
         {activeTab === "overview" && (
           <div className={`space-y-10 transition-all duration-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Plane className="w-4 h-4 text-[#e3a99c]" />
+                <span className="text-[12px] font-semibold text-[#e3a99c] uppercase tracking-wide">
+                  Playbook Portal
+                </span>
+              </div>
+              <h1 className="text-[27px] md:text-[32px] font-bold text-[#3a3a3a] tracking-tight leading-tight">
+                Welcome back, {firstName}!
+              </h1>
+              <p className="text-[14px] text-[#787774] mt-1">
+                Here&apos;s everything in your travel toolkit.
+              </p>
+            </div>
+
             {hasOwnedPlaybook && (
               <section>
                 <SectionHeader title="Your Playbooks" />
@@ -254,18 +310,20 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
 
         {activeTab === "services" && (
           <section className={`transition-all duration-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <SectionHeader title="Your Services" />
             {hasServices ? (
-              <>
-                <SectionHeader title="Your Services" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {session.serviceOrders.map((order) => (
-                    <OwnedServiceCard key={order.id} order={order} />
-                  ))}
-                </div>
-              </>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {session.serviceOrders.map((order) => (
+                  <OwnedServiceCard key={order.id} order={order} />
+                ))}
+              </div>
             ) : (
-              <div className="bg-white border border-[#e7ddd3] rounded-2xl p-5">
-                <p className="text-[14px] text-[#6b6b6b]">No service orders yet.</p>
+              <div className="bg-white border border-[#e7ddd3] rounded-2xl p-8 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-[#f5f0ec] flex items-center justify-center mx-auto mb-3">
+                  <FileText className="w-6 h-6 text-[#b0a89e]" />
+                </div>
+                <p className="text-[14px] font-semibold text-[#3a3a3a] mb-1">No service orders yet</p>
+                <p className="text-[13px] text-[#b0a89e]">When you purchase a service, it will appear here.</p>
               </div>
             )}
           </section>
@@ -273,25 +331,38 @@ export default function Dashboard({ session, onLogout }: DashboardProps) {
 
         {activeTab === "history" && (
           <section className={`transition-all duration-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <SectionHeader title="Purchase History" />
             {hasHistory ? (
-              <>
-                <SectionHeader title="Purchase History" />
-                <div className="bg-white rounded-2xl border border-[#e7ddd3] overflow-hidden">
-                  {session.purchaseHistory.map((purchase, i) => (
-                    <PurchaseRow
-                      key={`${purchase.productSlug}-${purchase.purchasedAt}`}
-                      purchase={purchase}
-                      isLast={i === session.purchaseHistory.length - 1}
-                    />
-                  ))}
-                </div>
-              </>
+              <div className="bg-white rounded-2xl border border-[#e7ddd3] overflow-hidden">
+                {session.purchaseHistory.map((purchase, i) => (
+                  <PurchaseRow
+                    key={`${purchase.productSlug}-${purchase.purchasedAt}`}
+                    purchase={purchase}
+                    isLast={i === session.purchaseHistory.length - 1}
+                  />
+                ))}
+              </div>
             ) : (
-              <div className="bg-white border border-[#e7ddd3] rounded-2xl p-5">
-                <p className="text-[14px] text-[#6b6b6b]">No purchases yet.</p>
+              <div className="bg-white border border-[#e7ddd3] rounded-2xl p-8 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-[#f5f0ec] flex items-center justify-center mx-auto mb-3">
+                  <CreditCard className="w-6 h-6 text-[#b0a89e]" />
+                </div>
+                <p className="text-[14px] font-semibold text-[#3a3a3a] mb-1">No purchases yet</p>
+                <p className="text-[13px] text-[#b0a89e]">Your purchase history will show up here.</p>
               </div>
             )}
           </section>
+        )}
+
+        {activeTab === "profile" && (
+          <div className={`transition-all duration-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <SectionHeader title="My Profile" />
+            <ProfileTab
+              session={session}
+              onSessionUpdate={handleSessionUpdate}
+              onManageSubscription={handleManageSubscription}
+            />
+          </div>
         )}
       </div>
     </main>
@@ -491,9 +562,15 @@ function ComingSoonCard({ item }: { item: { emoji: string; title: string; taglin
   );
 }
 
+const PURCHASE_TYPE_META: Record<string, { label: string; color: string }> = {
+  subscription:   { label: "Subscription",  color: "#6b8cba" },
+  one_time:       { label: "One-time",       color: "#8fa38d" },
+};
+
 function PurchaseRow({ purchase, isLast }: { purchase: PurchaseHistoryEntry; isLast: boolean }) {
-  const symbol = purchase.currency?.toUpperCase() === "EUR" ? "€" : purchase.currency?.toUpperCase() ?? "";
-  const amount = purchase.amount != null ? `${symbol}${purchase.amount}` : null;
+  const symbol = purchase.currency?.toUpperCase() === "EUR" ? "€" : purchase.currency?.toUpperCase() === "USD" ? "$" : (purchase.currency?.toUpperCase() ?? "");
+  const amount = purchase.amount != null ? `${symbol}${purchase.amount.toFixed(2)}` : null;
+  const typeMeta = purchase.purchaseType ? (PURCHASE_TYPE_META[purchase.purchaseType] ?? null) : null;
 
   return (
     <div className={`flex items-center justify-between px-5 py-4 ${!isLast ? "border-b border-[#e7ddd3]" : ""}`}>
@@ -502,13 +579,24 @@ function PurchaseRow({ purchase, isLast }: { purchase: PurchaseHistoryEntry; isL
           <CreditCard className="w-4 h-4 text-[#e3a99c]" />
         </div>
         <div>
-          <p className="text-[14px] font-semibold text-[#3a3a3a]">{purchase.productName}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[14px] font-semibold text-[#3a3a3a]">{purchase.productName || "Purchase"}</p>
+            {typeMeta && (
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                style={{ color: typeMeta.color, backgroundColor: `${typeMeta.color}20` }}
+              >
+                <Tag className="w-2.5 h-2.5" />
+                {typeMeta.label}
+              </span>
+            )}
+          </div>
           <p className="text-[12px] text-[#b0a89e]">
             {new Date(purchase.purchasedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
       </div>
-      {amount && <span className="text-[14px] font-semibold text-[#3a3a3a]">{amount}</span>}
+      {amount && <span className="text-[14px] font-semibold text-[#3a3a3a] ml-3 flex-shrink-0">{amount}</span>}
     </div>
   );
 }
