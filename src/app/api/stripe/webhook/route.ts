@@ -180,23 +180,28 @@ async function handleCheckoutCompleted(
 
   // ── Route based on product category ──────────────────────────────────────
   if (product.category === "access") {
-    // For subscriptions, set expiresAt to trial_end (if trialing) or current_period_end
-    // so user_access reflects when access actually expires
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sub = stripeSubscription as any;
-    const subscriptionExpiresAt = stripeSubscription
-      ? (() => {
-          const end = sub.trial_end ?? sub.current_period_end;
-          return end ? new Date(end * 1000).toISOString() : null;
-        })()
-      : null;
+    // Resolve expiresAt:
+    //   - Subscription  → trial_end ?? current_period_end (extended by invoice.paid on renewal)
+    //   - One-time      → now + duration_days (null duration_days = lifetime)
+    let expiresAt: string | null = null;
+    if (stripeSubscription) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sub = stripeSubscription as any;
+      const end = sub.trial_end ?? sub.current_period_end;
+      expiresAt = end ? new Date(end * 1000).toISOString() : null;
+    } else if (product.duration_days) {
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + product.duration_days);
+      expiresAt = expiry.toISOString();
+    }
+    // duration_days === null on one-time products means lifetime — expiresAt stays null
 
     await grantUserAccess({
       customerId,
       productId: product.id,
       accessType: getAccessSource(product),
       source: stripeSubscription?.id ?? null,
-      expiresAt: subscriptionExpiresAt,
+      expiresAt,
     });
 
     if (stripeSubscription) {
