@@ -61,12 +61,21 @@ export async function POST(request: NextRequest) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.happyvoyager.com";
 
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // Fetch customer email to pre-fill Stripe checkout
+    const { data: customerRow } = await supabase
+      .from("customers")
+      .select("email")
+      .eq("id", customer.id)
+      .single();
+    const customerEmail = customerRow?.email ?? undefined;
+
     // Block duplicate subscriptions
     if (plan.mode === "subscription") {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_KEY!
-      );
       const { data: existing } = await supabase
         .from("subscriptions")
         .select("id")
@@ -91,6 +100,7 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         client_reference_id: customer.id,
+        customer_email: customerEmail,
         line_items: [{ price: priceId, quantity: 1 }],
         subscription_data: {
           trial_period_days: plan.trial ? 14 : undefined,
@@ -106,6 +116,7 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         client_reference_id: customer.id,
+        customer_email: customerEmail,
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/dashboard`,

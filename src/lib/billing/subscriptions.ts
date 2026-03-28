@@ -21,7 +21,7 @@ export async function upsertSubscription(params: {
   interval?: string | null;
 }): Promise<void> {
   const supabase = getClient();
-  await supabase.from("subscriptions").upsert(
+  const { error } = await supabase.from("subscriptions").upsert(
     {
       customer_id: params.customerId,
       stripe_subscription_id: params.stripeSubscriptionId,
@@ -37,6 +37,9 @@ export async function upsertSubscription(params: {
     },
     { onConflict: "stripe_subscription_id" }
   );
+  if (error) {
+    throw new Error(`upsertSubscription failed: ${error.message} (code: ${error.code})`);
+  }
 }
 
 export async function updateSubscriptionStatus(
