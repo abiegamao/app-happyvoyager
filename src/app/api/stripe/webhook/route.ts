@@ -183,10 +183,8 @@ async function handleCheckoutCompleted(
     await grantUserAccess({
       customerId,
       productId: product.id,
-      productSlug: product.slug,
-      productName: product.name,
-      accessSource: getAccessSource(product),
-      stripeSubscriptionId: stripeSubscription?.id ?? null,
+      accessType: getAccessSource(product),
+      source: stripeSubscription?.id ?? null,
     });
 
     if (stripeSubscription) {
@@ -195,7 +193,8 @@ async function handleCheckoutCompleted(
       await upsertSubscription({
         customerId,
         stripeSubscriptionId: stripeSubscription.id,
-        stripePriceId,
+        stripeCustomerId:
+          typeof session.customer === "string" ? session.customer : null,
         productId: product.id,
         status: stripeSubscription.status as SubscriptionStatus,
         currentPeriodStart: s.current_period_start
@@ -204,21 +203,19 @@ async function handleCheckoutCompleted(
         currentPeriodEnd: s.current_period_end
           ? new Date(s.current_period_end * 1000).toISOString()
           : null,
-        trialEnd: s.trial_end
+        trialEndsAt: s.trial_end
           ? new Date(s.trial_end * 1000).toISOString()
           : null,
-        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-        interval:
-          stripeSubscription.items.data[0]?.price?.recurring?.interval ?? null,
       });
     }
   } else if (product.category === "service") {
     await createServiceOrder({
       customerId,
       productId: product.id,
-      productSlug: product.slug,
-      productName: product.name,
-      stripeSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : null,
     });
   }
 
@@ -252,13 +249,14 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     return;
   }
 
-  // Look up product separately — no products join in getSubscriptionByStripeId
-  const product = await getProductByStripePriceId(sub.stripe_price_id);
+  // Look up product directly by product_id stored on the subscription
+  const { data: product } = await supabaseAdmin
+    .from("products")
+    .select("*")
+    .eq("id", sub.product_id)
+    .single();
   if (!product) {
-    console.error(
-      "invoice.paid: product not found for price",
-      sub.stripe_price_id
-    );
+    console.error("invoice.paid: product not found for id", sub.product_id);
     return;
   }
 
@@ -270,11 +268,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   await grantUserAccess({
     customerId: sub.customer_id,
     productId: product.id,
-    productSlug: product.slug,
-    productName: product.name,
-    accessSource: getAccessSource(product),
+    accessType: getAccessSource(product),
     expiresAt: periodEnd?.toISOString() ?? null,
-    stripeSubscriptionId: subscriptionId,
+    source: subscriptionId,
   });
 
   await updateSubscriptionStatus(subscriptionId, "active", {
@@ -303,7 +299,7 @@ async function handleSubscriptionUpdated(
     subscription.status as SubscriptionStatus,
     {
       current_period_end: periodEnd?.toISOString() ?? undefined,
-      trial_end: trialEnd?.toISOString() ?? undefined,
+      trial_ends_at: trialEnd?.toISOString() ?? undefined,
     }
   );
 }

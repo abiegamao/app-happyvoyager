@@ -8,28 +8,42 @@ function getClient() {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapUserAccess(row: any): UserAccess {
+  return {
+    id: row.id,
+    customer_id: row.customer_id,
+    granted_by_product_id: row.granted_by_product_id,
+    product_slug: row.products?.slug ?? "",
+    product_name: row.products?.name ?? "",
+    access_type: row.access_type,
+    source: row.source ?? null,
+    expires_at: row.expires_at ?? null,
+    is_active: row.is_active,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 export async function grantUserAccess(params: {
   customerId: string;
   productId: string;
-  productSlug: string;
-  productName: string;
-  accessSource: AccessSource;
+  accessType: AccessSource;
   expiresAt?: string | null;
-  stripeSubscriptionId?: string | null;
+  source?: string | null;
 }): Promise<void> {
   const supabase = getClient();
   const { error } = await supabase.from("user_access").upsert(
     {
       customer_id: params.customerId,
-      product_id: params.productId,
-      product_slug: params.productSlug,
-      product_name: params.productName,
-      access_source: params.accessSource,
+      granted_by_product_id: params.productId,
+      access_type: params.accessType,
       expires_at: params.expiresAt ?? null,
-      stripe_subscription_id: params.stripeSubscriptionId ?? null,
-      revoked_at: null,
+      source: params.source ?? null,
+      is_active: true,
+      updated_at: new Date().toISOString(),
     },
-    { onConflict: "customer_id,product_id" }
+    { onConflict: "customer_id,granted_by_product_id" }
   );
   if (error) {
     throw new Error(`grantUserAccess failed: ${error.message} (code: ${error.code})`);
@@ -43,12 +57,13 @@ export async function checkUserAccess(
   const supabase = getClient();
   const { data } = await supabase
     .from("user_access")
-    .select("*")
+    .select("*, products:granted_by_product_id!inner(slug, name)")
     .eq("customer_id", customerId)
-    .eq("product_slug", productSlug)
-    .is("revoked_at", null)
-    .single();
-  return data ?? null;
+    .eq("is_active", true)
+    .eq("products.slug", productSlug)
+    .maybeSingle();
+  if (!data) return null;
+  return mapUserAccess(data);
 }
 
 export async function revokeSubscriptionAccess(
@@ -57,8 +72,8 @@ export async function revokeSubscriptionAccess(
   const supabase = getClient();
   await supabase
     .from("user_access")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("stripe_subscription_id", stripeSubscriptionId);
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("source", stripeSubscriptionId);
 }
 
 export async function getAllUserAccess(
@@ -67,8 +82,8 @@ export async function getAllUserAccess(
   const supabase = getClient();
   const { data } = await supabase
     .from("user_access")
-    .select("*")
+    .select("*, products:granted_by_product_id(slug, name)")
     .eq("customer_id", customerId)
-    .is("revoked_at", null);
-  return data ?? [];
+    .eq("is_active", true);
+  return (data ?? []).map(mapUserAccess);
 }

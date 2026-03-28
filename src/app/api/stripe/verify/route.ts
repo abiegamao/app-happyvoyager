@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       access: accessRows.map((a) => ({
         productSlug: a.product_slug,
         productName: a.product_name,
-        accessSource: a.access_source,
+        accessSource: a.access_type,
         expiresAt: a.expires_at,
       })),
       serviceOrders: serviceOrders.map((o) => ({
@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
         purchaseType: p.purchase_type ?? null,
       })),
       subscriptionStatus: subscription?.status ?? null,
-      subscriptionInterval: subscription?.interval ?? null,
-      trialEndsAt: subscription?.trial_end ?? null,
+      subscriptionInterval: null,
+      trialEndsAt: subscription?.trial_ends_at ?? null,
       currentPeriodEnd: subscription?.current_period_end ?? null,
     });
   } catch (error) {

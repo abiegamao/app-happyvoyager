@@ -23,7 +23,7 @@ export interface Product {
   type: ProductType;
   category: ProductCategory;
   description: string | null;
-  active: boolean;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -31,41 +31,39 @@ export interface Subscription {
   id: string;
   customer_id: string;
   stripe_subscription_id: string;
-  stripe_price_id: string;
+  stripe_customer_id: string | null;
   product_id: string;
   status: SubscriptionStatus;
   current_period_start: string | null;
   current_period_end: string | null;
-  trial_end: string | null;
-  cancel_at_period_end: boolean;
-  interval: string | null;
+  trial_ends_at: string | null;
+  canceled_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
+// Reflects actual DB columns + product slug/name populated via join
 export interface UserAccess {
   id: string;
   customer_id: string;
-  product_id: string;
-  product_slug: string;
-  product_name: string;
-  access_source: AccessSource;
-  granted_at: string;
+  granted_by_product_id: string;
+  product_slug: string;    // joined from products
+  product_name: string;    // joined from products
+  access_type: AccessSource;
+  source: string | null;   // stores stripe_subscription_id when applicable
   expires_at: string | null;
-  revoked_at: string | null;
-  stripe_subscription_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Purchase {
   id: string;
   customer_id: string;
   product_id: string;
-  product_slug: string;
-  product_name: string;
   stripe_payment_intent_id: string | null;
   stripe_session_id: string | null;
-  amount: number;
-  currency: string;
+  purchase_type: string | null;
   purchased_at: string;
 }
 
@@ -73,9 +71,9 @@ export interface ServiceOrder {
   id: string;
   customer_id: string;
   product_id: string;
-  product_slug: string;
-  product_name: string;
-  stripe_session_id: string | null;
+  product_slug: string;    // joined from products
+  product_name: string;    // joined from products
+  stripe_payment_intent_id: string | null;
   status: ServiceOrderStatus;
   notes: string | null;
   created_at: string;
