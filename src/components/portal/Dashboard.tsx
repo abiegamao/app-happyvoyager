@@ -42,7 +42,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type DashboardTab = "overview" | "playbooks" | "services" | "history" | "profile";
+type DashboardTab = "overview" | "playbooks" | "services" | "history";
 
 export default function Dashboard({ session: initialSession, onLogout }: DashboardProps) {
   const [mounted, setMounted] = useState(false);
@@ -89,7 +89,6 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
       { key: "playbooks", label: "Playbooks" },
       { key: "services",  label: "Services",  ...(hasServices ? { count: session.serviceOrders.length } : {}) },
       { key: "history",   label: "History",   ...(hasHistory  ? { count: session.purchaseHistory.length } : {}) },
-      { key: "profile",   label: "Profile"   },
     ],
     [hasServices, hasHistory, session.serviceOrders.length, session.purchaseHistory.length]
   );
@@ -153,13 +152,7 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
                     <p className="text-[13px] font-semibold text-[#3a3a3a] truncate">{session.name || "Voyager"}</p>
                     <p className="text-[11px] text-[#b0a89e] truncate">{session.email}</p>
                   </div>
-                  <button
-                    onClick={() => { setActiveTab("profile"); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#3a3a3a] hover:bg-[#f9f5f2] transition-colors"
-                  >
-                    <User className="w-4 h-4 text-[#b0a89e]" />
-                    My Profile
-                  </button>
+
                   {hasSubscription && (
                     <button
                       onClick={() => { handleManageSubscription(); setMenuOpen(false); }}
@@ -359,16 +352,7 @@ export default function Dashboard({ session: initialSession, onLogout }: Dashboa
           </section>
         )}
 
-        {activeTab === "profile" && (
-          <div className={`transition-all duration-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <SectionHeader title="My Profile" />
-            <ProfileTab
-              session={session}
-              onSessionUpdate={handleSessionUpdate}
-              onManageSubscription={handleManageSubscription}
-            />
-          </div>
-        )}
+
       </div>
     </main>
   );
