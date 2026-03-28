@@ -13,7 +13,7 @@ export async function getProductByStripePriceId(
 ): Promise<Product | null> {
   const supabase = getClient();
   const { data } = await supabase
-    .from("stripe_prices")
+    .from("stripe_products")
     .select("product_id, products(*)")
     .eq("stripe_price_id", priceId)
     .single();
@@ -28,7 +28,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .from("products")
     .select("*")
     .eq("slug", slug)
-    .eq("active", true)
+    .eq("is_active", true)
     .single();
   return data ?? null;
 }
@@ -38,10 +38,10 @@ export async function getStripePriceId(
 ): Promise<string | null> {
   const supabase = getClient();
   const { data } = await supabase
-    .from("stripe_prices")
+    .from("stripe_products")
     .select("stripe_price_id")
     .eq("product_id", productId)
-    .eq("active", true)
+    .eq("is_active", true)
     .single();
   return data?.stripe_price_id ?? null;
 }
