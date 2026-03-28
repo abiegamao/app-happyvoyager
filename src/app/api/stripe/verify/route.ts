@@ -33,15 +33,15 @@ export async function POST(request: NextRequest) {
       getServiceOrdersByCustomer(customer.id),
       supabase
         .from("customers")
-        .select("id, email, name")
+        .select("id, email, name, company, job_title, country, phone, created_at")
         .eq("id", customer.id)
         .single(),
     ]);
 
-    // Get purchases
+    // Get purchases joined with products for name/slug/price
     const { data: purchases } = await supabase
       .from("purchases")
-      .select("*")
+      .select("*, products(name, slug, price_cents, currency)")
       .eq("customer_id", customer.id)
       .order("purchased_at", { ascending: false });
 
@@ -55,10 +55,16 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
+    const cd = customerData.data;
     return NextResponse.json({
       customerId: customer.id,
-      email: customerData.data?.email,
-      name: customerData.data?.name,
+      email: cd?.email,
+      name: cd?.name ?? null,
+      company: cd?.company ?? null,
+      jobTitle: cd?.job_title ?? null,
+      country: cd?.country ?? null,
+      phone: cd?.phone ?? null,
+      memberSince: cd?.created_at ?? null,
       access: accessRows.map((a) => ({
         productSlug: a.product_slug,
         productName: a.product_name,
@@ -67,17 +73,20 @@ export async function POST(request: NextRequest) {
       })),
       serviceOrders: serviceOrders.map((o) => ({
         id: o.id,
-        productSlug: o.product_slug,
-        productName: o.product_name,
+        productSlug: o.product_slug ?? "",
+        productName: o.product_name ?? "",
         status: o.status,
         createdAt: o.created_at,
       })),
       purchaseHistory: (purchases ?? []).map((p) => ({
-        productSlug: p.product_slug,
-        productName: p.product_name,
-        amount: p.amount,
-        currency: p.currency,
+        productSlug: (p.products as { slug?: string } | null)?.slug ?? "",
+        productName: (p.products as { name?: string } | null)?.name ?? "",
+        amount: (p.products as { price_cents?: number } | null)?.price_cents != null
+          ? ((p.products as { price_cents: number }).price_cents / 100)
+          : null,
+        currency: (p.products as { currency?: string } | null)?.currency ?? "usd",
         purchasedAt: p.purchased_at,
+        purchaseType: p.purchase_type ?? null,
       })),
       subscriptionStatus: subscription?.status ?? null,
       subscriptionInterval: subscription?.interval ?? null,
